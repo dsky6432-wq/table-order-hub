@@ -57,12 +57,14 @@ const HeroSection = () => {
               Kreirajte digitalni meni, generišite QR kodove za svaki sto i primajte porudžbine u realnom vremenu. Sve na jednom mestu.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <Button variant="hero" size="lg" className="text-base">
-                <ShoppingCart className="mr-1 h-5 w-5" />
-                Kreirajte meni besplatno
+              <Button variant="hero" size="lg" className="text-base" asChild>
+                <Link to="/auth">
+                  <ShoppingCart className="mr-1 h-5 w-5" />
+                  Kreirajte meni besplatno
+                </Link>
               </Button>
-              <Button variant="hero-outline" size="lg" className="text-base">
-                Pogledajte demo
+              <Button variant="hero-outline" size="lg" className="text-base" asChild>
+                <a href="#paketi">Pogledajte pakete</a>
               </Button>
             </div>
             <div className="mt-8 flex items-center gap-6 text-sm text-muted-foreground">

@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Check } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const plans = [
   {
@@ -85,8 +86,9 @@ const PricingSection = () => {
                 variant={plan.popular ? "hero" : "hero-outline"}
                 className="mt-6 w-full"
                 size="lg"
+                asChild
               >
-                Započni sa {plan.name}
+                <Link to="/auth">Započni sa {plan.name}</Link>
               </Button>
               <ul className="mt-8 space-y-3">
                 {plan.features.map((feature) => (

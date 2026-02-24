@@ -7,6 +7,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import Index from "./pages/Index";
 import AuthPage from "./pages/AuthPage";
 import Dashboard from "./pages/Dashboard";
+import MenuPage from "./pages/MenuPage";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
 
@@ -22,6 +23,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<AuthPage />} />
+            <Route path="/menu/:token" element={<MenuPage />} />
             <Route
               path="/dashboard"
               element={
