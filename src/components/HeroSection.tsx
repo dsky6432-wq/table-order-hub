@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
 import heroImage from "@/assets/hero-image.jpg";
 import { QrCode, ShoppingCart, Smartphone } from "lucide-react";
 
@@ -26,12 +27,12 @@ const HeroSection = () => {
           <a href="#faq" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
             FAQ
           </a>
-          <Button variant="hero" size="sm">
-            Započni besplatno
+          <Button variant="hero" size="sm" asChild>
+            <Link to="/auth">Započni besplatno</Link>
           </Button>
         </div>
-        <Button variant="hero" size="sm" className="md:hidden">
-          Započni
+        <Button variant="hero" size="sm" className="md:hidden" asChild>
+          <Link to="/auth">Započni</Link>
         </Button>
       </nav>
 
