@@ -36,7 +36,23 @@ interface Profile {
   restaurant_name: string;
   restaurant_description: string | null;
   logo_url: string | null;
+  menu_theme: "default" | "dark" | "warm" | "ocean";
 }
+
+const formatRSD = (value: number) =>
+  new Intl.NumberFormat("sr-RS", {
+    style: "currency",
+    currency: "RSD",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(value);
+
+const menuThemeClassMap: Record<Profile["menu_theme"], string> = {
+  default: "",
+  dark: "menu-theme-dark",
+  warm: "menu-theme-warm",
+  ocean: "menu-theme-ocean",
+};
 
 const MenuPage = () => {
   const { token } = useParams<{ token: string }>();
@@ -72,12 +88,12 @@ const MenuPage = () => {
 
     // Fetch restaurant profile, categories, and products in parallel
     const [profileRes, categoriesRes, productsRes] = await Promise.all([
-      supabase.from("profiles").select("restaurant_name, restaurant_description, logo_url").eq("user_id", tableData.user_id).single(),
+      supabase.from("profiles").select("restaurant_name, restaurant_description, logo_url, menu_theme").eq("user_id", tableData.user_id).single(),
       supabase.from("categories").select("*").eq("user_id", tableData.user_id).order("sort_order"),
       supabase.from("products").select("*").eq("user_id", tableData.user_id).eq("available", true).order("sort_order"),
     ]);
 
-    if (profileRes.data) setProfile(profileRes.data);
+    if (profileRes.data) setProfile(profileRes.data as Profile);
     if (categoriesRes.data) setCategories(categoriesRes.data);
     if (productsRes.data) setProducts(productsRes.data);
     setLoading(false);
@@ -107,32 +123,33 @@ const MenuPage = () => {
 
   const totalPrice = cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
+  const activeThemeClass = profile ? menuThemeClassMap[profile.menu_theme] : "";
 
   const submitOrder = async () => {
     if (!table || cart.length === 0) return;
     setSubmitting(true);
 
-    const { data: order, error: orderError } = await supabase
+    const orderId = crypto.randomUUID();
+    const { error: orderError } = await supabase
       .from("orders")
       .insert({
+        id: orderId,
         restaurant_user_id: table.user_id,
         table_id: table.id,
         table_number: table.table_number,
         total: totalPrice,
         payment_method: paymentMethod,
         customer_note: customerNote || null,
-      })
-      .select("id")
-      .single();
+      });
 
-    if (orderError || !order) {
+    if (orderError) {
       toast.error("Greška pri slanju porudžbine.");
       setSubmitting(false);
       return;
     }
 
     const items = cart.map((item) => ({
-      order_id: order.id,
+      order_id: orderId,
       product_id: item.product.id,
       product_name: item.product.name,
       quantity: item.quantity,
@@ -194,7 +211,7 @@ const MenuPage = () => {
   const uncategorized = products.filter((p) => !p.category_id);
 
   return (
-    <div className="min-h-screen bg-background pb-24">
+    <div className={`min-h-screen bg-background pb-24 ${activeThemeClass}`}>
       {/* Header */}
       <header className="sticky top-0 z-20 border-b border-border bg-card/95 backdrop-blur-sm">
         <div className="mx-auto flex max-w-lg items-center justify-between px-4 py-3">
@@ -207,7 +224,7 @@ const MenuPage = () => {
           {totalItems > 0 && (
             <Button variant="hero" size="sm" onClick={() => setShowCart(true)}>
               <ShoppingCart className="mr-1 h-4 w-4" />
-              {totalItems} · €{totalPrice.toFixed(2)}
+              {totalItems} · {formatRSD(totalPrice)}
             </Button>
           )}
         </div>
@@ -266,7 +283,7 @@ const MenuPage = () => {
                 <div key={item.product.id} className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-foreground">{item.product.name}</p>
-                    <p className="text-xs text-muted-foreground">€{Number(item.product.price).toFixed(2)}</p>
+                    <p className="text-xs text-muted-foreground">{formatRSD(Number(item.product.price))}</p>
                   </div>
                   <div className="flex items-center gap-2">
                     <button onClick={() => updateQuantity(item.product.id, -1)} className="flex h-7 w-7 items-center justify-center rounded-full border border-border hover:bg-muted">
@@ -315,7 +332,7 @@ const MenuPage = () => {
 
             {/* Total & Submit */}
             <div className="mt-4 flex items-center justify-between">
-              <span className="font-heading text-xl font-bold text-foreground">€{totalPrice.toFixed(2)}</span>
+              <span className="font-heading text-xl font-bold text-foreground">{formatRSD(totalPrice)}</span>
               <Button variant="hero" size="lg" onClick={submitOrder} disabled={submitting}>
                 <Send className="mr-1 h-4 w-4" />
                 {submitting ? "Šalje se..." : "Pošalji porudžbinu"}
@@ -348,7 +365,7 @@ const ProductCard = ({
         {product.description && (
           <p className="mt-0.5 text-xs text-muted-foreground line-clamp-2">{product.description}</p>
         )}
-        <p className="mt-1 font-heading text-sm font-bold text-primary">€{Number(product.price).toFixed(2)}</p>
+        <p className="mt-1 font-heading text-sm font-bold text-primary">{formatRSD(Number(product.price))}</p>
       </div>
       {cartItem ? (
         <div className="flex items-center gap-2">

@@ -12,13 +12,13 @@ const plans = [
   {
     id: "basic",
     name: "Osnovni",
-    price: "29",
+    price: "1000",
     features: ["Digitalni meni", "QR kod za svaki sto", "Online porudžbine", "Dashboard u realnom vremenu"],
   },
   {
     id: "premium",
     name: "Premium",
-    price: "59",
+    price: "2000",
     features: ["Sve iz Osnovnog", "Različite teme", "Personalizacija dizajna", "Brending sa logom", "Analitika porudžbina"],
   },
 ];
@@ -43,27 +43,42 @@ const AuthPage = () => {
 
     try {
       if (isLogin) {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
+
+        if (data.user) {
+          const metadata = data.user.user_metadata as { restaurant_name?: string; subscription_plan?: string };
+          const { error: profileError } = await supabase
+            .from("profiles")
+            .upsert(
+              {
+                user_id: data.user.id,
+                restaurant_name: metadata.restaurant_name || "",
+                subscription_plan: metadata.subscription_plan === "premium" ? "premium" : "basic",
+              },
+              { onConflict: "user_id" }
+            );
+
+          if (profileError) {
+            toast.error("Profil nije ažuriran, pokušajte ponovo.");
+          }
+        }
+
         toast.success("Uspešno ste se prijavili!");
         navigate("/dashboard");
       } else {
-        const { data, error } = await supabase.auth.signUp({
+        const { error } = await supabase.auth.signUp({
           email,
           password,
-          options: { emailRedirectTo: window.location.origin },
+          options: {
+            emailRedirectTo: window.location.origin,
+            data: {
+              restaurant_name: restaurantName,
+              subscription_plan: selectedPlan,
+            },
+          },
         });
         if (error) throw error;
-
-        // Update profile with restaurant name and plan
-        if (data.user) {
-          // Wait a moment for the trigger to create the profile
-          await new Promise((r) => setTimeout(r, 1000));
-          await supabase.from("profiles").update({
-            restaurant_name: restaurantName,
-            subscription_plan: selectedPlan,
-          }).eq("user_id", data.user.id);
-        }
 
         toast.success("Proverite vaš email za potvrdu naloga!");
       }
@@ -113,7 +128,7 @@ const AuthPage = () => {
                         }`}
                       >
                         <p className="font-heading text-sm font-bold text-foreground">{plan.name}</p>
-                        <p className="mt-1 font-heading text-xl font-bold text-primary">€{plan.price}<span className="text-xs font-normal text-muted-foreground">/mes</span></p>
+                        <p className="mt-1 font-heading text-xl font-bold text-primary">{plan.price} RSD<span className="text-xs font-normal text-muted-foreground">/mes</span></p>
                         <ul className="mt-2 space-y-1">
                           {plan.features.map((f) => (
                             <li key={f} className="flex items-center gap-1 text-xs text-muted-foreground">

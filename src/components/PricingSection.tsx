@@ -6,7 +6,7 @@ import { Link } from "react-router-dom";
 const plans = [
   {
     name: "Osnovni",
-    price: "29",
+    price: "1000",
     description: "Sve što vam treba da digitalizujete meni i primite prve porudžbine.",
     features: [
       "Kreiranje digitalnog menija",
@@ -20,7 +20,7 @@ const plans = [
   },
   {
     name: "Premium",
-    price: "59",
+    price: "2000",
     description: "Za restorane koji žele potpunu kontrolu nad dizajnom i iskustvom.",
     features: [
       "Sve iz Osnovnog paketa",
@@ -78,7 +78,7 @@ const PricingSection = () => {
               <p className="mt-2 text-sm text-muted-foreground">{plan.description}</p>
               <div className="mt-6 flex items-baseline gap-1">
                 <span className="font-heading text-5xl font-bold text-foreground">
-                  €{plan.price}
+                  {plan.price} RSD
                 </span>
                 <span className="text-muted-foreground">/mesečno</span>
               </div>
