@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
-import { QrCode, LogOut, ShoppingCart, UtensilsCrossed, LayoutDashboard, Plus, Table } from "lucide-react";
+import { QrCode, LogOut, ShoppingCart, UtensilsCrossed, LayoutDashboard, Plus, Table, ExternalLink, Copy } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 
@@ -42,6 +42,7 @@ const Dashboard = () => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [tableCount, setTableCount] = useState(0);
+  const [tables, setTables] = useState<{ id: string; table_number: number; qr_code_token: string }[]>([]);
 
   // New item form
   const [newCategoryName, setNewCategoryName] = useState("");
@@ -91,8 +92,9 @@ const Dashboard = () => {
   };
 
   const fetchTables = async () => {
-    const { count } = await supabase.from("restaurant_tables").select("*", { count: "exact", head: true });
+    const { data, count } = await supabase.from("restaurant_tables").select("*", { count: "exact" }).order("table_number");
     setTableCount(count ?? 0);
+    if (data) setTables(data);
   };
 
   const addCategory = async () => {
@@ -342,10 +344,41 @@ const Dashboard = () => {
                   <Plus className="mr-1 h-4 w-4" /> Generiši stolove
                 </Button>
               </div>
-              <p className="mt-3 text-xs text-muted-foreground">
-                Svaki sto automatski dobija jedinstven QR kod koji vodi do vašeg menija.
-              </p>
             </div>
+
+            {tables.length > 0 && (
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {tables.map((t) => {
+                  const menuUrl = `${window.location.origin}/menu/${t.qr_code_token}`;
+                  return (
+                    <div key={t.id} className="rounded-xl border border-border bg-card p-4 shadow-card">
+                      <div className="flex items-center justify-between">
+                        <span className="font-heading text-lg font-bold text-foreground">Sto {t.table_number}</span>
+                        <QrCode className="h-5 w-5 text-primary" />
+                      </div>
+                      <p className="mt-2 text-xs text-muted-foreground break-all">{menuUrl}</p>
+                      <div className="mt-3 flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            navigator.clipboard.writeText(menuUrl);
+                            toast.success("Link kopiran!");
+                          }}
+                        >
+                          <Copy className="mr-1 h-3 w-3" /> Kopiraj
+                        </Button>
+                        <Button size="sm" variant="hero" asChild>
+                          <a href={menuUrl} target="_blank" rel="noopener noreferrer">
+                            <ExternalLink className="mr-1 h-3 w-3" /> Otvori
+                          </a>
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
       </main>
