@@ -71,6 +71,13 @@ const Dashboard = () => {
   const [profileForm, setProfileForm] = useState({ restaurant_name: "", restaurant_description: "", logo_url: "" });
 
   const isPremium = profile?.subscription_plan === "premium";
+  const formatRSD = (value: number) =>
+    new Intl.NumberFormat("sr-RS", {
+      style: "currency",
+      currency: "RSD",
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(value);
 
   useEffect(() => {
     if (!user) return;
@@ -178,6 +185,17 @@ const Dashboard = () => {
   };
 
   const deleteTable = async (id: string) => {
+    const { error: detachError } = await supabase
+      .from("orders")
+      .update({ table_id: null })
+      .eq("restaurant_user_id", user!.id)
+      .eq("table_id", id);
+
+    if (detachError) {
+      toast.error(detachError.message);
+      return;
+    }
+
     const { error } = await supabase.from("restaurant_tables").delete().eq("id", id);
     if (error) { toast.error(error.message); return; }
     fetchTables();
@@ -317,7 +335,7 @@ const Dashboard = () => {
                         {statusLabels[order.status] ?? order.status}
                       </span>
                     </div>
-                    <p className="mt-2 text-2xl font-bold text-foreground">€{Number(order.total).toFixed(2)}</p>
+                    <p className="mt-2 text-2xl font-bold text-foreground">{formatRSD(Number(order.total))}</p>
                     <p className="mt-1 text-xs text-muted-foreground">
                       {order.payment_method === "card" ? "Kartica" : "Gotovina"} • {new Date(order.created_at).toLocaleTimeString("sr")}
                     </p>
@@ -419,7 +437,7 @@ const Dashboard = () => {
                         {p.description && <p className="text-xs text-muted-foreground">{p.description}</p>}
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="font-heading text-lg font-bold text-primary">€{Number(p.price).toFixed(2)}</span>
+                        <span className="font-heading text-lg font-bold text-primary">{formatRSD(Number(p.price))}</span>
                         <button onClick={() => deleteProduct(p.id)} className="rounded-full p-1 text-muted-foreground hover:text-destructive transition-colors">
                           <Trash2 className="h-4 w-4" />
                         </button>
@@ -431,7 +449,7 @@ const Dashboard = () => {
               <div className="mt-4 grid gap-3 rounded-xl border border-border bg-card p-4 shadow-card sm:grid-cols-2 lg:grid-cols-4">
                 <input className="rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none" placeholder="Naziv proizvoda" value={newProduct.name} onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })} />
                 <input className="rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none" placeholder="Opis" value={newProduct.description} onChange={(e) => setNewProduct({ ...newProduct, description: e.target.value })} />
-                <input className="rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none" placeholder="Cena (€)" type="number" step="0.01" value={newProduct.price} onChange={(e) => setNewProduct({ ...newProduct, price: e.target.value })} />
+                <input className="rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none" placeholder="Cena (RSD)" type="number" step="1" value={newProduct.price} onChange={(e) => setNewProduct({ ...newProduct, price: e.target.value })} />
                 <div className="flex gap-2">
                   <select className="flex-1 rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none" value={newProduct.category_id} onChange={(e) => setNewProduct({ ...newProduct, category_id: e.target.value })}>
                     <option value="">Kategorija</option>
@@ -535,11 +553,11 @@ const Dashboard = () => {
               </div>
               <div className="rounded-xl border border-border bg-card p-5 shadow-card">
                 <p className="text-sm text-muted-foreground">Prihod danas</p>
-                <p className="mt-1 font-heading text-3xl font-bold text-primary">€{todayRevenue.toFixed(2)}</p>
+                <p className="mt-1 font-heading text-3xl font-bold text-primary">{formatRSD(todayRevenue)}</p>
               </div>
               <div className="rounded-xl border border-border bg-card p-5 shadow-card">
                 <p className="text-sm text-muted-foreground">Prosek porudžbine</p>
-                <p className="mt-1 font-heading text-3xl font-bold text-foreground">€{avgOrderValue.toFixed(2)}</p>
+                <p className="mt-1 font-heading text-3xl font-bold text-foreground">{formatRSD(avgOrderValue)}</p>
               </div>
             </div>
 
