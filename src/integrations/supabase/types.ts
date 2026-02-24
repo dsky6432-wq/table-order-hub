@@ -179,8 +179,10 @@ export type Database = {
           created_at: string
           id: string
           logo_url: string | null
+          menu_theme: string
           restaurant_description: string | null
           restaurant_name: string
+          subscription_plan: string
           updated_at: string
           user_id: string
         }
@@ -188,8 +190,10 @@ export type Database = {
           created_at?: string
           id?: string
           logo_url?: string | null
+          menu_theme?: string
           restaurant_description?: string | null
           restaurant_name?: string
+          subscription_plan?: string
           updated_at?: string
           user_id: string
         }
@@ -197,8 +201,10 @@ export type Database = {
           created_at?: string
           id?: string
           logo_url?: string | null
+          menu_theme?: string
           restaurant_description?: string | null
           restaurant_name?: string
+          subscription_plan?: string
           updated_at?: string
           user_id?: string
         }
