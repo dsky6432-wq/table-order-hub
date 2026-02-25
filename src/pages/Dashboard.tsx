@@ -65,6 +65,8 @@ const Dashboard = () => {
   const [newCategoryName, setNewCategoryName] = useState("");
   const [newProduct, setNewProduct] = useState({ name: "", description: "", price: "", category_id: "" });
   const [newTableCount, setNewTableCount] = useState("");
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   // Profile editing
   const [editingProfile, setEditingProfile] = useState(false);
@@ -147,8 +149,23 @@ const Dashboard = () => {
     toast.success("Kategorija obrisana!");
   };
 
+  const uploadProductImage = async (file: File): Promise<string | null> => {
+    const ext = file.name.split(".").pop();
+    const path = `${user!.id}/${crypto.randomUUID()}.${ext}`;
+    const { error } = await supabase.storage.from("product-images").upload(path, file);
+    if (error) { toast.error("Greška pri uploadu slike."); return null; }
+    const { data } = supabase.storage.from("product-images").getPublicUrl(path);
+    return data.publicUrl;
+  };
+
   const addProduct = async () => {
     if (!newProduct.name.trim() || !newProduct.price) return;
+    setUploadingImage(true);
+    let imageUrl: string | null = null;
+    if (imageFile) {
+      imageUrl = await uploadProductImage(imageFile);
+      if (!imageUrl) { setUploadingImage(false); return; }
+    }
     const { error } = await supabase.from("products").insert({
       name: newProduct.name,
       description: newProduct.description,
@@ -156,9 +173,12 @@ const Dashboard = () => {
       category_id: newProduct.category_id || null,
       user_id: user!.id,
       sort_order: products.length,
+      image_url: imageUrl,
     });
-    if (error) { toast.error(error.message); return; }
+    if (error) { toast.error(error.message); setUploadingImage(false); return; }
     setNewProduct({ name: "", description: "", price: "", category_id: "" });
+    setImageFile(null);
+    setUploadingImage(false);
     fetchProducts();
     toast.success("Proizvod dodat!");
   };
@@ -257,10 +277,11 @@ const Dashboard = () => {
     cancelled: "Otkazana",
   };
 
-  // Analytics
-  const todayOrders = orders.filter((o) => new Date(o.created_at).toDateString() === new Date().toDateString());
+  // Analytics — exclude cancelled orders from revenue calculations
+  const nonCancelledOrders = orders.filter((o) => o.status !== "cancelled");
+  const todayOrders = nonCancelledOrders.filter((o) => new Date(o.created_at).toDateString() === new Date().toDateString());
   const todayRevenue = todayOrders.reduce((sum, o) => sum + Number(o.total), 0);
-  const completedOrders = orders.filter((o) => o.status === "completed");
+  const completedOrders = nonCancelledOrders.filter((o) => o.status === "completed");
   const avgOrderValue = completedOrders.length > 0 ? completedOrders.reduce((s, o) => s + Number(o.total), 0) / completedOrders.length : 0;
 
   const allTabs: { key: Tab; icon: any; label: string; premium?: boolean }[] = [
@@ -431,12 +452,15 @@ const Dashboard = () => {
               {products.length > 0 && (
                 <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                   {products.map((p) => (
-                    <div key={p.id} className="flex items-center justify-between rounded-xl border border-border bg-card p-4 shadow-card">
-                      <div>
-                        <p className="font-semibold text-foreground">{p.name}</p>
-                        {p.description && <p className="text-xs text-muted-foreground">{p.description}</p>}
+                    <div key={p.id} className="flex items-center gap-3 rounded-xl border border-border bg-card p-4 shadow-card">
+                      {(p as any).image_url && (
+                        <img src={(p as any).image_url} alt={p.name} className="h-14 w-14 rounded-lg object-cover flex-shrink-0" />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-foreground truncate">{p.name}</p>
+                        {p.description && <p className="text-xs text-muted-foreground truncate">{p.description}</p>}
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-shrink-0">
                         <span className="font-heading text-lg font-bold text-primary">{formatRSD(Number(p.price))}</span>
                         <button onClick={() => deleteProduct(p.id)} className="rounded-full p-1 text-muted-foreground hover:text-destructive transition-colors">
                           <Trash2 className="h-4 w-4" />
@@ -446,16 +470,21 @@ const Dashboard = () => {
                   ))}
                 </div>
               )}
-              <div className="mt-4 grid gap-3 rounded-xl border border-border bg-card p-4 shadow-card sm:grid-cols-2 lg:grid-cols-4">
+              <div className="mt-4 grid gap-3 rounded-xl border border-border bg-card p-4 shadow-card sm:grid-cols-2 lg:grid-cols-5">
                 <input className="rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none" placeholder="Naziv proizvoda" value={newProduct.name} onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })} />
                 <input className="rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none" placeholder="Opis" value={newProduct.description} onChange={(e) => setNewProduct({ ...newProduct, description: e.target.value })} />
                 <input className="rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none" placeholder="Cena (RSD)" type="number" step="1" value={newProduct.price} onChange={(e) => setNewProduct({ ...newProduct, price: e.target.value })} />
+                <label className="flex items-center gap-2 rounded-lg border border-input bg-background px-3 py-2 text-sm cursor-pointer">
+                  <ImageIcon className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-muted-foreground truncate">{imageFile ? imageFile.name : "Slika"}</span>
+                  <input type="file" accept="image/*" className="hidden" onChange={(e) => setImageFile(e.target.files?.[0] || null)} />
+                </label>
                 <div className="flex gap-2">
                   <select className="flex-1 rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none" value={newProduct.category_id} onChange={(e) => setNewProduct({ ...newProduct, category_id: e.target.value })}>
                     <option value="">Kategorija</option>
                     {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>
-                  <Button size="sm" variant="hero" onClick={addProduct}>
+                  <Button size="sm" variant="hero" onClick={addProduct} disabled={uploadingImage}>
                     <Plus className="h-4 w-4" />
                   </Button>
                 </div>
@@ -545,7 +574,7 @@ const Dashboard = () => {
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <div className="rounded-xl border border-border bg-card p-5 shadow-card">
                 <p className="text-sm text-muted-foreground">Ukupno porudžbina</p>
-                <p className="mt-1 font-heading text-3xl font-bold text-foreground">{orders.length}</p>
+                <p className="mt-1 font-heading text-3xl font-bold text-foreground">{nonCancelledOrders.length}</p>
               </div>
               <div className="rounded-xl border border-border bg-card p-5 shadow-card">
                 <p className="text-sm text-muted-foreground">Danas</p>
