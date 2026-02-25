@@ -111,22 +111,22 @@ const Dashboard = () => {
   };
 
   const fetchOrders = async () => {
-    const { data } = await supabase.from("orders").select("*").order("created_at", { ascending: false }).limit(50);
+    const { data } = await supabase.from("orders").select("*").eq("restaurant_user_id", user!.id).order("created_at", { ascending: false }).limit(50);
     if (data) setOrders(data);
   };
 
   const fetchCategories = async () => {
-    const { data } = await supabase.from("categories").select("*").order("sort_order");
+    const { data } = await supabase.from("categories").select("*").eq("user_id", user!.id).order("sort_order");
     if (data) setCategories(data);
   };
 
   const fetchProducts = async () => {
-    const { data } = await supabase.from("products").select("*").order("sort_order");
+    const { data } = await supabase.from("products").select("*").eq("user_id", user!.id).order("sort_order");
     if (data) setProducts(data);
   };
 
   const fetchTables = async () => {
-    const { data, count } = await supabase.from("restaurant_tables").select("*", { count: "exact" }).order("table_number");
+    const { data, count } = await supabase.from("restaurant_tables").select("*", { count: "exact" }).eq("user_id", user!.id).order("table_number");
     setTableCount(count ?? 0);
     if (data) setTables(data);
   };
