@@ -359,8 +359,11 @@ const ProductCard = ({
   const cartItem = cart.find((item) => item.product.id === product.id);
 
   return (
-    <div className="flex items-center justify-between rounded-xl border border-border bg-card p-4 shadow-card">
-      <div className="flex-1">
+    <div className="flex items-center gap-3 rounded-xl border border-border bg-card p-4 shadow-card">
+      {product.image_url && (
+        <img src={product.image_url} alt={product.name} className="h-16 w-16 rounded-lg object-cover flex-shrink-0" />
+      )}
+      <div className="flex-1 min-w-0">
         <p className="font-medium text-foreground">{product.name}</p>
         {product.description && (
           <p className="mt-0.5 text-xs text-muted-foreground line-clamp-2">{product.description}</p>
