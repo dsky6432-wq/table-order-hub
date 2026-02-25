@@ -49,9 +49,8 @@ const HeroSection = () => {
               Digitalizujte vaš restoran
             </div>
             <h1 className="font-heading text-4xl font-bold leading-tight text-foreground md:text-5xl lg:text-6xl">
-              Vaš meni,{" "}
-              <span className="text-gradient">jedna skenira</span>{" "}
-              dalje
+              Kreirajte svoj meni{" "}
+              <span className="text-gradient">na brz i lak način</span>
             </h1>
             <p className="mt-5 max-w-lg text-lg leading-relaxed text-muted-foreground">
               Kreirajte digitalni meni, generišite QR kodove za svaki sto i primajte porudžbine u realnom vremenu. Sve na jednom mestu.

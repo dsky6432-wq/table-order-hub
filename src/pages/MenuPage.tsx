@@ -2,8 +2,9 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { QrCode, ShoppingCart, Plus, Minus, X, CreditCard, Banknote, Send } from "lucide-react";
+import { QrCode, ShoppingCart, Plus, Minus, X, CreditCard, Banknote, Send, Globe } from "lucide-react";
 import { toast } from "sonner";
+import { LANGUAGES, MenuLang, t } from "@/lib/menu-translations";
 
 interface Product {
   id: string;
@@ -67,13 +68,14 @@ const MenuPage = () => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [orderSent, setOrderSent] = useState(false);
+  const [lang, setLang] = useState<MenuLang>("sr");
+  const [showLangPicker, setShowLangPicker] = useState(false);
 
   useEffect(() => {
     if (token) loadMenu();
   }, [token]);
 
   const loadMenu = async () => {
-    // Find the table by QR token
     const { data: tableData, error: tableError } = await supabase
       .from("restaurant_tables")
       .select("*")
@@ -86,7 +88,6 @@ const MenuPage = () => {
     }
     setTable(tableData);
 
-    // Fetch restaurant profile, categories, and products in parallel
     const [profileRes, categoriesRes, productsRes] = await Promise.all([
       supabase.from("profiles").select("restaurant_name, restaurant_description, logo_url, menu_theme").eq("user_id", tableData.user_id).single(),
       supabase.from("categories").select("*").eq("user_id", tableData.user_id).order("sort_order"),
@@ -172,7 +173,7 @@ const MenuPage = () => {
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
-        <div className="animate-pulse text-muted-foreground">Učitavanje menija...</div>
+        <div className="animate-pulse text-muted-foreground">{t(lang, "loading")}</div>
       </div>
     );
   }
@@ -181,8 +182,8 @@ const MenuPage = () => {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-background px-6 text-center">
         <QrCode className="h-16 w-16 text-muted-foreground/40" />
-        <h1 className="mt-4 font-heading text-2xl font-bold text-foreground">Meni nije pronađen</h1>
-        <p className="mt-2 text-muted-foreground">QR kod je nevažeći ili je istekao.</p>
+        <h1 className="mt-4 font-heading text-2xl font-bold text-foreground">{t(lang, "menuNotFound")}</h1>
+        <p className="mt-2 text-muted-foreground">{t(lang, "invalidQR")}</p>
       </div>
     );
   }
@@ -193,12 +194,12 @@ const MenuPage = () => {
         <div className="flex h-20 w-20 items-center justify-center rounded-full bg-accent">
           <ShoppingCart className="h-10 w-10 text-primary" />
         </div>
-        <h1 className="mt-6 font-heading text-2xl font-bold text-foreground">Porudžbina poslata!</h1>
+        <h1 className="mt-6 font-heading text-2xl font-bold text-foreground">{t(lang, "orderSent")}</h1>
         <p className="mt-2 text-muted-foreground">
-          Vaša porudžbina za Sto {table.table_number} je primljena. Restoran je obavešteni.
+          {t(lang, "orderReceived", { table: table.table_number })}
         </p>
         <Button variant="hero" className="mt-6" onClick={() => setOrderSent(false)}>
-          Naruči ponovo
+          {t(lang, "orderAgain")}
         </Button>
       </div>
     );
@@ -209,6 +210,7 @@ const MenuPage = () => {
     products: products.filter((p) => p.category_id === cat.id),
   }));
   const uncategorized = products.filter((p) => !p.category_id);
+  const currentLang = LANGUAGES.find((l) => l.code === lang)!;
 
   return (
     <div className={`min-h-screen bg-background pb-24 ${activeThemeClass}`}>
@@ -217,16 +219,47 @@ const MenuPage = () => {
         <div className="mx-auto flex max-w-lg items-center justify-between px-4 py-3">
           <div>
             <h1 className="font-heading text-lg font-bold text-foreground">
-              {profile?.restaurant_name || "Meni"}
+              {profile?.restaurant_name || t(lang, "menu")}
             </h1>
-            <p className="text-xs text-muted-foreground">Sto {table.table_number}</p>
+            <p className="text-xs text-muted-foreground">{t(lang, "table")} {table.table_number}</p>
           </div>
-          {totalItems > 0 && (
-            <Button variant="hero" size="sm" onClick={() => setShowCart(true)}>
-              <ShoppingCart className="mr-1 h-4 w-4" />
-              {totalItems} · {formatRSD(totalPrice)}
-            </Button>
-          )}
+          <div className="flex items-center gap-2">
+            {/* Language Picker */}
+            <div className="relative">
+              <button
+                onClick={() => setShowLangPicker(!showLangPicker)}
+                className="flex items-center gap-1 rounded-lg border border-border px-2 py-1.5 text-sm text-muted-foreground hover:bg-muted transition-colors"
+              >
+                <Globe className="h-3.5 w-3.5" />
+                <span>{currentLang.flag}</span>
+              </button>
+              {showLangPicker && (
+                <>
+                  <div className="fixed inset-0 z-30" onClick={() => setShowLangPicker(false)} />
+                  <div className="absolute right-0 top-full z-40 mt-1 rounded-lg border border-border bg-card py-1 shadow-card-hover min-w-[140px]">
+                    {LANGUAGES.map((l) => (
+                      <button
+                        key={l.code}
+                        onClick={() => { setLang(l.code); setShowLangPicker(false); }}
+                        className={`flex w-full items-center gap-2 px-3 py-2 text-sm transition-colors hover:bg-muted ${
+                          lang === l.code ? "text-primary font-medium" : "text-foreground"
+                        }`}
+                      >
+                        <span>{l.flag}</span>
+                        {l.label}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+            {totalItems > 0 && (
+              <Button variant="hero" size="sm" onClick={() => setShowCart(true)}>
+                <ShoppingCart className="mr-1 h-4 w-4" />
+                {totalItems} · {formatRSD(totalPrice)}
+              </Button>
+            )}
+          </div>
         </div>
       </header>
 
@@ -251,7 +284,7 @@ const MenuPage = () => {
 
         {uncategorized.length > 0 && (
           <div className="mb-8">
-            <h2 className="mb-3 font-heading text-lg font-bold text-foreground">Ostalo</h2>
+            <h2 className="mb-3 font-heading text-lg font-bold text-foreground">{t(lang, "other")}</h2>
             <div className="space-y-3">
               {uncategorized.map((product) => (
                 <ProductCard key={product.id} product={product} cart={cart} onAdd={addToCart} onUpdate={updateQuantity} />
@@ -262,7 +295,7 @@ const MenuPage = () => {
 
         {products.length === 0 && (
           <div className="py-12 text-center">
-            <p className="text-muted-foreground">Meni je trenutno prazan.</p>
+            <p className="text-muted-foreground">{t(lang, "emptyMenu")}</p>
           </div>
         )}
       </main>
@@ -272,7 +305,7 @@ const MenuPage = () => {
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-foreground/40 backdrop-blur-sm">
           <div className="w-full max-w-lg rounded-t-2xl border-t border-border bg-card p-6 shadow-card-hover animate-in slide-in-from-bottom">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="font-heading text-xl font-bold text-foreground">Vaša korpa</h2>
+              <h2 className="font-heading text-xl font-bold text-foreground">{t(lang, "yourCart")}</h2>
               <button onClick={() => setShowCart(false)} className="rounded-full p-1 hover:bg-muted">
                 <X className="h-5 w-5 text-muted-foreground" />
               </button>
@@ -300,7 +333,7 @@ const MenuPage = () => {
 
             {/* Payment Method */}
             <div className="mt-4">
-              <p className="mb-2 text-sm font-medium text-foreground">Način plaćanja</p>
+              <p className="mb-2 text-sm font-medium text-foreground">{t(lang, "paymentMethod")}</p>
               <div className="flex gap-2">
                 <button
                   onClick={() => setPaymentMethod("cash")}
@@ -308,7 +341,7 @@ const MenuPage = () => {
                     paymentMethod === "cash" ? "border-primary bg-accent text-primary" : "border-border text-muted-foreground hover:bg-muted"
                   }`}
                 >
-                  <Banknote className="h-4 w-4" /> Gotovina
+                  <Banknote className="h-4 w-4" /> {t(lang, "cash")}
                 </button>
                 <button
                   onClick={() => setPaymentMethod("card")}
@@ -316,7 +349,7 @@ const MenuPage = () => {
                     paymentMethod === "card" ? "border-primary bg-accent text-primary" : "border-border text-muted-foreground hover:bg-muted"
                   }`}
                 >
-                  <CreditCard className="h-4 w-4" /> Kartica
+                  <CreditCard className="h-4 w-4" /> {t(lang, "card")}
                 </button>
               </div>
             </div>
@@ -324,7 +357,7 @@ const MenuPage = () => {
             {/* Note */}
             <textarea
               className="mt-3 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring"
-              placeholder="Napomena (opciono)..."
+              placeholder={t(lang, "notePlaceholder")}
               rows={2}
               value={customerNote}
               onChange={(e) => setCustomerNote(e.target.value)}
@@ -335,7 +368,7 @@ const MenuPage = () => {
               <span className="font-heading text-xl font-bold text-foreground">{formatRSD(totalPrice)}</span>
               <Button variant="hero" size="lg" onClick={submitOrder} disabled={submitting}>
                 <Send className="mr-1 h-4 w-4" />
-                {submitting ? "Šalje se..." : "Pošalji porudžbinu"}
+                {submitting ? t(lang, "sending") : t(lang, "sendOrder")}
               </Button>
             </div>
           </div>

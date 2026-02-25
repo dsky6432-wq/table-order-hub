@@ -67,6 +67,7 @@ const Dashboard = () => {
   const [newTableCount, setNewTableCount] = useState("");
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [hideFinished, setHideFinished] = useState(false);
 
   // Profile editing
   const [editingProfile, setEditingProfile] = useState(false);
@@ -279,6 +280,7 @@ const Dashboard = () => {
 
   // Analytics — exclude cancelled orders from revenue calculations
   const nonCancelledOrders = orders.filter((o) => o.status !== "cancelled");
+  const filteredOrders = hideFinished ? orders.filter((o) => o.status !== "completed" && o.status !== "cancelled") : orders;
   const todayOrders = nonCancelledOrders.filter((o) => new Date(o.created_at).toDateString() === new Date().toDateString());
   const todayRevenue = todayOrders.reduce((sum, o) => sum + Number(o.total), 0);
   const completedOrders = nonCancelledOrders.filter((o) => o.status === "completed");
@@ -338,15 +340,26 @@ const Dashboard = () => {
       <main className="mx-auto max-w-7xl px-4 py-6 md:px-8">
         {activeTab === "orders" && (
           <div className="space-y-4">
-            <h2 className="font-heading text-xl font-bold text-foreground">Porudžbine</h2>
-            {orders.length === 0 ? (
+            <div className="flex items-center justify-between">
+              <h2 className="font-heading text-xl font-bold text-foreground">Porudžbine</h2>
+              <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={hideFinished}
+                  onChange={(e) => setHideFinished(e.target.checked)}
+                  className="rounded border-border"
+                />
+                Sakrij završene/otkazane
+              </label>
+            </div>
+            {filteredOrders.length === 0 ? (
               <div className="rounded-xl border border-border bg-card p-12 text-center">
                 <ShoppingCart className="mx-auto h-12 w-12 text-muted-foreground/40" />
                 <p className="mt-4 text-muted-foreground">Još nema porudžbina</p>
               </div>
             ) : (
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {orders.map((order) => (
+                {filteredOrders.map((order) => (
                   <div key={order.id} className="rounded-xl border border-border bg-card p-5 shadow-card">
                     <div className="flex items-center justify-between">
                       <span className="font-heading font-semibold text-foreground">

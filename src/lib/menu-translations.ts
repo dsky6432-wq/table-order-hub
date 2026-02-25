@@ -1,0 +1,117 @@
+export type MenuLang = "sr" | "en" | "de" | "it" | "fr";
+
+export const LANGUAGES: { code: MenuLang; label: string; flag: string }[] = [
+  { code: "sr", label: "Srpski", flag: "🇷🇸" },
+  { code: "en", label: "English", flag: "🇬🇧" },
+  { code: "de", label: "Deutsch", flag: "🇩🇪" },
+  { code: "it", label: "Italiano", flag: "🇮🇹" },
+  { code: "fr", label: "Français", flag: "🇫🇷" },
+];
+
+const translations: Record<MenuLang, Record<string, string>> = {
+  sr: {
+    table: "Sto",
+    other: "Ostalo",
+    emptyMenu: "Meni je trenutno prazan.",
+    yourCart: "Vaša korpa",
+    paymentMethod: "Način plaćanja",
+    cash: "Gotovina",
+    card: "Kartica",
+    notePlaceholder: "Napomena (opciono)...",
+    sendOrder: "Pošalji porudžbinu",
+    sending: "Šalje se...",
+    orderSent: "Porudžbina poslata!",
+    orderReceived: "Vaša porudžbina za Sto {table} je primljena. Restoran je obavešten.",
+    orderAgain: "Naruči ponovo",
+    menuNotFound: "Meni nije pronađen",
+    invalidQR: "QR kod je nevažeći ili je istekao.",
+    loading: "Učitavanje menija...",
+    menu: "Meni",
+  },
+  en: {
+    table: "Table",
+    other: "Other",
+    emptyMenu: "The menu is currently empty.",
+    yourCart: "Your cart",
+    paymentMethod: "Payment method",
+    cash: "Cash",
+    card: "Card",
+    notePlaceholder: "Note (optional)...",
+    sendOrder: "Send order",
+    sending: "Sending...",
+    orderSent: "Order sent!",
+    orderReceived: "Your order for Table {table} has been received. The restaurant has been notified.",
+    orderAgain: "Order again",
+    menuNotFound: "Menu not found",
+    invalidQR: "The QR code is invalid or has expired.",
+    loading: "Loading menu...",
+    menu: "Menu",
+  },
+  de: {
+    table: "Tisch",
+    other: "Sonstiges",
+    emptyMenu: "Die Speisekarte ist derzeit leer.",
+    yourCart: "Ihr Warenkorb",
+    paymentMethod: "Zahlungsmethode",
+    cash: "Bargeld",
+    card: "Karte",
+    notePlaceholder: "Anmerkung (optional)...",
+    sendOrder: "Bestellung senden",
+    sending: "Wird gesendet...",
+    orderSent: "Bestellung gesendet!",
+    orderReceived: "Ihre Bestellung für Tisch {table} wurde empfangen. Das Restaurant wurde benachrichtigt.",
+    orderAgain: "Erneut bestellen",
+    menuNotFound: "Speisekarte nicht gefunden",
+    invalidQR: "Der QR-Code ist ungültig oder abgelaufen.",
+    loading: "Speisekarte wird geladen...",
+    menu: "Speisekarte",
+  },
+  it: {
+    table: "Tavolo",
+    other: "Altro",
+    emptyMenu: "Il menù è attualmente vuoto.",
+    yourCart: "Il tuo carrello",
+    paymentMethod: "Metodo di pagamento",
+    cash: "Contanti",
+    card: "Carta",
+    notePlaceholder: "Nota (opzionale)...",
+    sendOrder: "Invia ordine",
+    sending: "Invio in corso...",
+    orderSent: "Ordine inviato!",
+    orderReceived: "Il tuo ordine per il Tavolo {table} è stato ricevuto. Il ristorante è stato avvisato.",
+    orderAgain: "Ordina di nuovo",
+    menuNotFound: "Menù non trovato",
+    invalidQR: "Il codice QR non è valido o è scaduto.",
+    loading: "Caricamento menù...",
+    menu: "Menù",
+  },
+  fr: {
+    table: "Table",
+    other: "Autre",
+    emptyMenu: "Le menu est actuellement vide.",
+    yourCart: "Votre panier",
+    paymentMethod: "Mode de paiement",
+    cash: "Espèces",
+    card: "Carte",
+    notePlaceholder: "Note (facultatif)...",
+    sendOrder: "Envoyer la commande",
+    sending: "Envoi en cours...",
+    orderSent: "Commande envoyée !",
+    orderReceived: "Votre commande pour la Table {table} a été reçue. Le restaurant a été informé.",
+    orderAgain: "Commander à nouveau",
+    menuNotFound: "Menu introuvable",
+    invalidQR: "Le code QR est invalide ou a expiré.",
+    loading: "Chargement du menu...",
+    menu: "Menu",
+  },
+};
+
+export const t = (lang: MenuLang, key: string, vars?: Record<string, string | number>) => {
+  let text = translations[lang]?.[key] || translations.sr[key] || key;
+  if (vars) {
+    Object.entries(vars).forEach(([k, v]) => {
+      text = text.replace(`{${k}}`, String(v));
+    });
+  }
+  return text;
+};
