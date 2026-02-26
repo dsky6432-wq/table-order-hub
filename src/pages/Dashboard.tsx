@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
-import { QrCode, LogOut, ShoppingCart, UtensilsCrossed, Plus, Table, Trash2, Download, BarChart3, Palette, Image as ImageIcon } from "lucide-react";
+import { QrCode, LogOut, ShoppingCart, UtensilsCrossed, Plus, Table, Trash2, Download, BarChart3, Palette, Image as ImageIcon, Pencil, Check, X } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { QRCodeCanvas } from "qrcode.react";
@@ -78,6 +78,10 @@ const Dashboard = () => {
   const [hideFinished, setHideFinished] = useState(false);
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [editingProductId, setEditingProductId] = useState<string | null>(null);
+  const [editProduct, setEditProduct] = useState({ name: "", description: "", price: "", category_id: "", image_url: "" });
+  const [editImageFile, setEditImageFile] = useState<File | null>(null);
+  const [updatingProduct, setUpdatingProduct] = useState(false);
 
   // Profile editing
   const [editingProfile, setEditingProfile] = useState(false);
@@ -199,6 +203,47 @@ const Dashboard = () => {
     if (error) { toast.error(error.message); return; }
     fetchProducts();
     toast.success("Proizvod obrisan!");
+  };
+
+  const startEditProduct = (p: Product) => {
+    setEditingProductId(p.id);
+    setEditProduct({
+      name: p.name,
+      description: p.description || "",
+      price: String(p.price),
+      category_id: p.category_id || "",
+      image_url: (p as any).image_url || "",
+    });
+    setEditImageFile(null);
+  };
+
+  const cancelEditProduct = () => {
+    setEditingProductId(null);
+    setEditImageFile(null);
+  };
+
+  const saveEditProduct = async () => {
+    if (!editingProductId || !editProduct.name.trim() || !editProduct.price) return;
+    setUpdatingProduct(true);
+    let imageUrl = editProduct.image_url;
+    if (editImageFile) {
+      const url = await uploadProductImage(editImageFile);
+      if (!url) { setUpdatingProduct(false); return; }
+      imageUrl = url;
+    }
+    const { error } = await supabase.from("products").update({
+      name: editProduct.name,
+      description: editProduct.description || null,
+      price: parseFloat(editProduct.price),
+      category_id: editProduct.category_id || null,
+      image_url: imageUrl || null,
+    }).eq("id", editingProductId);
+    if (error) { toast.error(error.message); setUpdatingProduct(false); return; }
+    setEditingProductId(null);
+    setEditImageFile(null);
+    setUpdatingProduct(false);
+    fetchProducts();
+    toast.success("Proizvod ažuriran!");
   };
 
   const generateTables = async () => {
@@ -509,20 +554,50 @@ const Dashboard = () => {
               {products.length > 0 && (
                 <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                   {products.map((p) => (
-                    <div key={p.id} className="flex items-center gap-3 rounded-xl border border-border bg-card p-4 shadow-card">
-                      {(p as any).image_url && (
-                        <img src={(p as any).image_url} alt={p.name} className="h-14 w-14 rounded-lg object-cover flex-shrink-0" />
+                    <div key={p.id} className="rounded-xl border border-border bg-card p-4 shadow-card">
+                      {editingProductId === p.id ? (
+                        <div className="space-y-2">
+                          <input className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none" placeholder="Naziv" value={editProduct.name} onChange={(e) => setEditProduct({ ...editProduct, name: e.target.value })} />
+                          <input className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none" placeholder="Opis" value={editProduct.description} onChange={(e) => setEditProduct({ ...editProduct, description: e.target.value })} />
+                          <input className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none" placeholder="Cena (RSD)" type="number" value={editProduct.price} onChange={(e) => setEditProduct({ ...editProduct, price: e.target.value })} />
+                          <select className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none" value={editProduct.category_id} onChange={(e) => setEditProduct({ ...editProduct, category_id: e.target.value })}>
+                            <option value="">Bez kategorije</option>
+                            {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                          </select>
+                          <label className="flex items-center gap-2 rounded-lg border border-input bg-background px-3 py-2 text-sm cursor-pointer">
+                            <ImageIcon className="h-4 w-4 text-muted-foreground" />
+                            <span className="text-muted-foreground truncate">{editImageFile ? editImageFile.name : "Promeni sliku"}</span>
+                            <input type="file" accept="image/*" className="hidden" onChange={(e) => setEditImageFile(e.target.files?.[0] || null)} />
+                          </label>
+                          <div className="flex gap-2 pt-1">
+                            <Button size="sm" variant="hero" onClick={saveEditProduct} disabled={updatingProduct}>
+                              <Check className="mr-1 h-4 w-4" /> Sačuvaj
+                            </Button>
+                            <Button size="sm" variant="ghost" onClick={cancelEditProduct}>
+                              <X className="mr-1 h-4 w-4" /> Otkaži
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-3">
+                          {(p as any).image_url && (
+                            <img src={(p as any).image_url} alt={p.name} className="h-14 w-14 rounded-lg object-cover flex-shrink-0" />
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p className="font-semibold text-foreground truncate">{p.name}</p>
+                            {p.description && <p className="text-xs text-muted-foreground truncate">{p.description}</p>}
+                          </div>
+                          <div className="flex items-center gap-1 flex-shrink-0">
+                            <span className="font-heading text-lg font-bold text-primary">{formatRSD(Number(p.price))}</span>
+                            <button onClick={() => startEditProduct(p)} className="rounded-full p-1 text-muted-foreground hover:text-primary transition-colors">
+                              <Pencil className="h-4 w-4" />
+                            </button>
+                            <button onClick={() => deleteProduct(p.id)} className="rounded-full p-1 text-muted-foreground hover:text-destructive transition-colors">
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </div>
                       )}
-                      <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-foreground truncate">{p.name}</p>
-                        {p.description && <p className="text-xs text-muted-foreground truncate">{p.description}</p>}
-                      </div>
-                      <div className="flex items-center gap-2 flex-shrink-0">
-                        <span className="font-heading text-lg font-bold text-primary">{formatRSD(Number(p.price))}</span>
-                        <button onClick={() => deleteProduct(p.id)} className="rounded-full p-1 text-muted-foreground hover:text-destructive transition-colors">
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
                     </div>
                   ))}
                 </div>
