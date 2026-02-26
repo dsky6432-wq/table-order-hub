@@ -8,6 +8,13 @@ import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { QRCodeCanvas } from "qrcode.react";
 
+interface OrderItem {
+  id: string;
+  product_name: string;
+  quantity: number;
+  price: number;
+}
+
 interface Order {
   id: string;
   table_number: number | null;
@@ -16,6 +23,7 @@ interface Order {
   total: number;
   customer_note: string | null;
   created_at: string;
+  items?: OrderItem[];
 }
 
 interface Category {
@@ -68,6 +76,8 @@ const Dashboard = () => {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [hideFinished, setHideFinished] = useState(false);
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
 
   // Profile editing
   const [editingProfile, setEditingProfile] = useState(false);
@@ -114,8 +124,8 @@ const Dashboard = () => {
   };
 
   const fetchOrders = async () => {
-    const { data } = await supabase.from("orders").select("*").eq("restaurant_user_id", user!.id).order("created_at", { ascending: false }).limit(50);
-    if (data) setOrders(data);
+    const { data } = await supabase.from("orders").select("*, order_items(id, product_name, quantity, price)").eq("restaurant_user_id", user!.id).order("created_at", { ascending: false }).limit(50);
+    if (data) setOrders(data.map((o: any) => ({ ...o, items: o.order_items })));
   };
 
   const fetchCategories = async () => {
@@ -240,14 +250,32 @@ const Dashboard = () => {
     toast.success("Tema ažurirana!");
   };
 
+  const uploadLogo = async (file: File): Promise<string | null> => {
+    const ext = file.name.split(".").pop();
+    const path = `${user!.id}/logo.${ext}`;
+    const { error } = await supabase.storage.from("product-images").upload(path, file, { upsert: true });
+    if (error) { toast.error("Greška pri uploadu logoa."); return null; }
+    const { data } = supabase.storage.from("product-images").getPublicUrl(path);
+    return data.publicUrl;
+  };
+
   const updateProfile = async () => {
+    setUploadingLogo(true);
+    let logoUrl = profileForm.logo_url;
+    if (logoFile) {
+      const url = await uploadLogo(logoFile);
+      if (!url) { setUploadingLogo(false); return; }
+      logoUrl = url;
+    }
     const { error } = await supabase.from("profiles").update({
       restaurant_name: profileForm.restaurant_name,
       restaurant_description: profileForm.restaurant_description || null,
-      logo_url: profileForm.logo_url || null,
+      logo_url: logoUrl || null,
     }).eq("user_id", user!.id);
-    if (error) { toast.error(error.message); return; }
+    if (error) { toast.error(error.message); setUploadingLogo(false); return; }
     setEditingProfile(false);
+    setLogoFile(null);
+    setUploadingLogo(false);
     fetchProfile();
     toast.success("Profil ažuriran!");
   };
@@ -369,12 +397,24 @@ const Dashboard = () => {
                         {statusLabels[order.status] ?? order.status}
                       </span>
                     </div>
-                    <p className="mt-2 text-2xl font-bold text-foreground">{formatRSD(Number(order.total))}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {order.payment_method === "card" ? "Kartica" : "Gotovina"} • {new Date(order.created_at).toLocaleTimeString("sr")}
-                    </p>
+                    {order.items && order.items.length > 0 && (
+                      <ul className="mt-2 space-y-1">
+                        {order.items.map((item) => (
+                          <li key={item.id} className="flex justify-between text-sm text-foreground">
+                            <span>{item.quantity}x {item.product_name}</span>
+                            <span className="text-muted-foreground">{formatRSD(Number(item.price) * item.quantity)}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    <div className="mt-2 flex items-center justify-between">
+                      <p className="text-lg font-bold text-foreground">{formatRSD(Number(order.total))}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {order.payment_method === "card" ? "Kartica" : "Gotovina"} • {new Date(order.created_at).toLocaleTimeString("sr")}
+                      </p>
+                    </div>
                     {order.customer_note && (
-                      <p className="mt-2 text-sm italic text-muted-foreground">"{order.customer_note}"</p>
+                      <p className="mt-2 rounded-lg bg-muted/50 px-3 py-2 text-sm italic text-muted-foreground">📝 {order.customer_note}</p>
                     )}
                     {order.status === "pending" && (
                       <div className="mt-3 flex gap-2">
@@ -418,7 +458,11 @@ const Dashboard = () => {
                   <div className="mt-3 grid gap-3 sm:grid-cols-3">
                     <input className="rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none" placeholder="Naziv restorana" value={profileForm.restaurant_name} onChange={(e) => setProfileForm({ ...profileForm, restaurant_name: e.target.value })} />
                     <input className="rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none" placeholder="Opis restorana" value={profileForm.restaurant_description} onChange={(e) => setProfileForm({ ...profileForm, restaurant_description: e.target.value })} />
-                    <input className="rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none" placeholder="URL logoa" value={profileForm.logo_url} onChange={(e) => setProfileForm({ ...profileForm, logo_url: e.target.value })} />
+                    <label className="flex items-center gap-2 rounded-lg border border-input bg-background px-3 py-2 text-sm cursor-pointer">
+                      <ImageIcon className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-muted-foreground truncate">{logoFile ? logoFile.name : "Upload logo"}</span>
+                      <input type="file" accept="image/*" className="hidden" onChange={(e) => setLogoFile(e.target.files?.[0] || null)} />
+                    </label>
                   </div>
                 ) : (
                   <div className="mt-2 flex items-center gap-3">
